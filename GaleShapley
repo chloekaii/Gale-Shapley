@@ -1,0 +1,220 @@
+from collections import deque
+import unittest
+
+
+def stable_matching(n, company_prefs, applicant_prefs):
+    if len(company_prefs) != n or len(applicant_prefs) != n:
+        raise ValueError("Expected n companies and n applicants.")
+
+    for prefs in company_prefs.values():
+        if len(prefs) != n:
+            raise ValueError("Company preference list does not have n applicants.")
+    for prefs in applicant_prefs.values():
+        if len(prefs) != n:
+            raise ValueError("Applicant preference list does not have n companies.")
+
+    free_companies = deque(company_prefs.keys())
+    matches = {}  # applicants : companies
+    applicant_choices = {a: {c: i for i, c in enumerate(prefs)} for a, prefs in applicant_prefs.items()}
+    next_choice = {c: 0 for c in company_prefs}
+
+    while free_companies:
+        company = free_companies.popleft()
+        if next_choice[company] >= n:
+            continue
+
+        applicant = company_prefs[company][next_choice[company]]
+        next_choice[company] += 1
+
+        if applicant not in matches:  # applicant is free
+            matches[applicant] = company
+        else:
+            current_match = matches[applicant]
+            if applicant_choices[applicant][company] < applicant_choices[applicant][current_match]:
+                # applicant prefers new company
+                matches[applicant] = company
+                free_companies.append(current_match)
+            else:
+                free_companies.append(company)  # applicant rejects company
+
+    return [(company, applicant) for applicant, company in matches.items()]
+
+
+class TestStableMatching(unittest.TestCase):
+
+    def test_basic_case(self):
+        n = 3
+        company_prefs = {
+            "A": ["X", "Y", "Z"],
+            "B": ["Y", "X", "Z"],
+            "C": ["Y", "Z", "X"]
+        }
+        applicant_prefs = {
+            "X": ["B", "A", "C"],
+            "Y": ["C", "B", "A"],
+            "Z": ["A", "C", "B"]
+        }
+        expected_output = [("A", "Z"), ("B", "X"), ("C", "Y")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_different_preferences(self):
+        n = 3
+        company_prefs = {
+            "A": ["Y", "X", "Z"],
+            "B": ["Z", "Y", "X"],
+            "C": ["X", "Z", "Y"]
+        }
+        applicant_prefs = {
+            "X": ["C", "A", "B"],
+            "Y": ["B", "C", "A"],
+            "Z": ["A", "B", "C"]
+        }
+        expected_output = [("A", "Y"), ("B", "Z"), ("C", "X")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_single_pair(self):
+        n = 1
+        company_prefs = {"A": ["X"]}
+        applicant_prefs = {"X": ["A"]}
+        expected_output = [("A", "X")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_all_preferences_same(self):
+        n = 3
+        company_prefs = {
+            "A": ["X", "Y", "Z"],
+            "B": ["X", "Y", "Z"],
+            "C": ["X", "Y", "Z"]
+        }
+        applicant_prefs = {
+            "X": ["A", "B", "C"],
+            "Y": ["A", "B", "C"],
+            "Z": ["A", "B", "C"]
+        }
+        expected_output = [("A", "X"), ("B", "Y"), ("C", "Z")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_reverse_preferences(self):
+        n = 3
+        company_prefs = {
+            "A": ["Z", "Y", "X"],
+            "B": ["Z", "Y", "X"],
+            "C": ["Z", "Y", "X"]
+        }
+        applicant_prefs = {
+            "X": ["A", "B", "C"],
+            "Y": ["A", "B", "C"],
+            "Z": ["A", "B", "C"]
+        }
+        expected_output = [("A", "Z"), ("B", "Y"), ("C", "X")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_complete_mismatch(self):
+        n = 3
+        company_prefs = {
+            "A": ["Z", "Y", "X"],
+            "B": ["X", "Y", "Z"],
+            "C": ["Y", "Z", "X"]
+        }
+        applicant_prefs = {
+            "X": ["C", "B", "A"],
+            "Y": ["A", "C", "B"],
+            "Z": ["B", "A", "C"]
+        }
+        expected_output = [("A", "Z"), ("B", "X"), ("C", "Y")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_first_choice_match(self):
+        n = 3
+        company_prefs = {
+            "A": ["X", "Y", "Z"],
+            "B": ["Y", "X", "Z"],
+            "C": ["Z", "X", "Y"]
+        }
+        applicant_prefs = {
+            "X": ["A", "B", "C"],
+            "Y": ["B", "A", "C"],
+            "Z": ["C", "A", "B"]
+        }
+        expected_output = [("A", "X"), ("B", "Y"), ("C", "Z")]
+
+        result = sorted(stable_matching(n, company_prefs, applicant_prefs))
+        expected_output_sorted = sorted(expected_output)
+
+        self.assertEqual(result, expected_output_sorted)
+
+    def test_invalid_n_too_large(self):
+        n = 4
+        company_prefs = {
+            "A": ["X", "Y", "Z"],
+            "B": ["Y", "X", "Z"],
+            "C": ["Y", "Z", "X"]
+        }
+        applicant_prefs = {
+            "X": ["B", "A", "C"],
+            "Y": ["C", "B", "A"],
+            "Z": ["A", "C", "B"]
+        }
+        with self.assertRaises(ValueError):
+            stable_matching(n, company_prefs, applicant_prefs)
+
+    def test_invalid_n_too_small(self):
+        n = 2
+        company_prefs = {
+            "A": ["X", "Y", "Z"],
+            "B": ["Y", "X", "Z"],
+            "C": ["Y", "Z", "X"]
+        }
+        applicant_prefs = {
+            "X": ["B", "A", "C"],
+            "Y": ["C", "B", "A"],
+            "Z": ["A", "C", "B"]
+        }
+        with self.assertRaises(ValueError):
+            stable_matching(n, company_prefs, applicant_prefs)
+
+    def test_unbalanced_preferences(self):
+        n = 3
+        company_prefs = {
+            "A": ["X", "Y"],
+            "B": ["Y", "X", "Z"],
+            "C": ["Y", "Z", "X"]
+        }
+        applicant_prefs = {
+            "X": ["B", "A", "C"],
+            "Y": ["C", "B", "A"],
+            "Z": ["A", "C", "B"]
+        }
+        with self.assertRaises(ValueError):
+            stable_matching(n, company_prefs, applicant_prefs)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
